@@ -1,0 +1,3 @@
+* -text
+B.TEXT diff=bbcbasic
+$.MKPIC diff=bbcbasic

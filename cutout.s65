@@ -226,8 +226,8 @@ innerloop:
 		bne deloop ;3
 		;}
 
-                nop
-                nop
+                ldx #<TimerValue ; nop
+                ldy #>TimerValue ; nop
                 nop
                 nop
                 nop
@@ -249,13 +249,13 @@ innerloop:
 set_timers:
                 ; Write T1 low now (the timer will not be written
                 ; until you write the high byte)
-                lda #<TimerValue
-                sta $FE44
+                ; lda #<TimerValue
+                stx $FE44
                 
                 ; Get high byte ready so we can write it as quickly as
                 ; possible at the right moment
-                ldx #>TimerValue
-                stx $FE45  ; start T1 counting ; 4c +1/2c
+                ; ldx #>TimerValue
+                sty $FE45  ; start T1 counting ; 4c +1/2c
 
                 ; Latch T1 to interupt exactly every 50Hz frame
                 lda #<FramePeriod
@@ -319,18 +319,26 @@ call_update:
 
                 ; Wait for first scanline
 
-		lda #$40
-		sta $FE4D       ; clear timer1 flag ; 4c +1/2c
+                ; Wait for T1<256
 -
-		bit $FE4D       ; 4c + 1/2c
-		beq -         	; poll timer1 flag
+                lda $fe45
+                bne -
 
-                ; Check if Escape pressed
+-
+                lda $fe44
+                cmp #11         ;+2 2/1
+                bcs -           ;+2 4/2
 
-                ; lda escape_pressed
-                ; bmi call_kill
+                asl a           ;+2 6/3
+                tax             ;+2 8/4
+                jmp (dejitter_routines,x) ;+6 14/7
 
-                ; FX draw callback here!
+dejitter_3:
+                nop
+dejitter_2:
+                nop
+dejitter_1:
+                nop
 
 call_draw:
                 jsr fx_draw_function
@@ -353,8 +361,22 @@ call_kill:
                 ; Exit gracefully (in theory)
 
                 rts
-                .pend
 
+dejitter_routines:
+                .word call_draw ;0
+                .word call_draw ;1
+                .word call_draw ;2
+                .word call_draw ;3
+                .word call_draw ;4
+                .word call_draw ;5
+                .word call_draw ;6
+                .word call_draw ;7
+                .word dejitter_1 ;8
+                .word dejitter_2 ;9
+                .word dejitter_3 ;10
+                
+                .pend
+                
 ;-------------------------------------------------------------------------
 ; 	HELPER FUNCTIONS
 ;-------------------------------------------------------------------------
@@ -479,7 +501,7 @@ fx_draw_function: .proc
                 ldy #0          ;row index
                 
                 ; shift timing
-                .nops 93
+                ; .nops 
 
 raster_loop:
                 ldx checquerboard_index    ;3 3

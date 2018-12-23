@@ -85,6 +85,7 @@ n:=n-2
 ; 	GLOBAL constants
 ;-------------------------------------------------------------------------
 
+glyph_subrows=12
 video_control_value=$f4                 ;mode 2
 access_shadow=4
 display_shadow=1
@@ -127,6 +128,10 @@ escape_pressed: .fill 1         ; set when Escape key pressed
 fx_colour_index: .fill 1        ; index into our colour palette
 row_index: .fill 1
 checquerboard_index: .fill 1
+scrolltext_ptr: .fill 2
+glyph_row: .fill 1
+glyph_subrow_counter: .fill 1
+glyph_ptr: .fill 2
 
                 .cerror *>=$9f,"ZP overflow"
 
@@ -326,13 +331,16 @@ call_update:
 
 -
                 lda $fe44
-                cmp #11         ;+2 2/1
-                bcs -           ;+2 4/2
+                .nop1           ;+1 1    1
+                cmp #12         ;+2 3    3
+                bcs -           ;+2 5 +3 6 
+                .nop1           ;+1 6
+                asl a           ;+2 8
+                tax             ;+2 10
+                jmp (dejitter_routines,x) ;+6 16/8
 
-                asl a           ;+2 6/3
-                tax             ;+2 8/4
-                jmp (dejitter_routines,x) ;+6 14/7
-
+dejitter_4:
+                nop
 dejitter_3:
                 nop
 dejitter_2:
@@ -374,6 +382,7 @@ dejitter_routines:
                 .word dejitter_1 ;8
                 .word dejitter_2 ;9
                 .word dejitter_3 ;10
+                .word dejitter_4 ;11
                 
                 .pend
                 
@@ -450,6 +459,15 @@ dest=*+1
                 lda #mode2_palette(12,12)
                 sta video_palette
 
+                lda #glyph_subrows
+                sta glyph_subrow_counter
+                stz glyph_row
+
+                lda #<scrolltext
+                sta scrolltext_ptr
+                lda #>scrolltext
+                sta scrolltext_ptr+1
+
                 rts
 
 load_pic:
@@ -474,9 +492,78 @@ load_pic:
 fx_update_function: .proc
                 ; Increment our index into the palette table
                 inc fx_colour_index
+                inc fx_colour_index
                 stz row_index
                 lda fx_colour_index
                 sta checquerboard_index
+
+                ; scroll display up
+                ldx #1
+scroll:
+                lda scanlines,x
+                sta scanlines-1,x
+                inx
+                bne scroll
+
+read_scrolltext:
+                lda (scrolltext_ptr)
+
+                sec
+                sbc #32
+                
+                stz glyph_ptr+1
+                asl a
+                asl a
+                rol glyph_ptr+1
+                asl a
+                rol glyph_ptr+1
+                adc #<font_data
+                sta glyph_ptr+0
+                
+                lda glyph_ptr+1
+                adc #>font_data
+                sta glyph_ptr+1
+
+                ldy glyph_row
+                lda (glyph_ptr),y
+
+                ; this isn't necessary, strictly speaking, but it
+                ; means you get junk, not a crash, when something goes
+                ; wrong.
+                and #$fe
+                sta scanlines+255
+
+                dec glyph_subrow_counter
+                bne scrolled
+
+next_glyph_row:
+                lda #glyph_subrows
+                sta glyph_subrow_counter
+
+                iny
+                cpy #8
+                bne glyph_row_ok
+
+next_scrolltext_char:
+                ldy #0
+
+                inc scrolltext_ptr+0
+                bne +
+                inc scrolltext_ptr+1
++
+
+                lda (scrolltext_ptr)
+                bne scrolltext_ptr_ok
+
+                lda #<scrolltext
+                sta scrolltext_ptr
+                lda #>scrolltext
+                sta scrolltext_ptr+1
+scrolltext_ptr_ok:
+glyph_row_ok:
+                sty glyph_row
+scrolled:
+                
                 rts
                 .pend
 
@@ -619,7 +706,10 @@ video_control_values:
 
                 .align $100
 scanlines:
-                .fill 256,$54
+                .fill 256,0
+
+scrolltext:
+                .text 'SCROLL TEXT PROTOTYPE!',0
 
 data_end:
 

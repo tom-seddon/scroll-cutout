@@ -24,6 +24,7 @@ def main():
     if 'palette' not in png_metadata: fatal('not palettized')
     png_palette=png_metadata['palette']
 
+    print 'font_data:'
     for ch in range(png_width//glyph_width):
         all=0
         print '; \'%s\' - %d, $%02x'%(chr(32+ch),32+ch,32+ch)

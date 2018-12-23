@@ -1,18 +1,26 @@
 #!/usr/bin/python
 
 def main():
-    for value in range(256):
-        cycles=6
+    for index in range(128):
+        value=index<<1
+        
+        cycles=0
         print 'row_routine_%02x:'%value
-        for bit in range(8):
-            if value&(1<<(7-bit))!=0: ins='trb'
-            else: ins='tsb'
+        mask=128
+        while mask!=1:
+            if value&mask!=0: ins='tsb'
+            else: ins='trb'
 
-            cycles+=4
-            print '    %s acccon ; 4 %d'%(ins,cycles)
+            cycles+=6
+            print '    %s acccon ; ($%02x) 6 %d'%(ins,mask,cycles)
+            mask>>=1
 
-        cycles+=6
-        print '    rts ; 6 %d'%cycles
+        cycles+=3
+        print '    jmp fx_draw_function.char_done ; 3 %d'%cycles
         print
+
+    print 'routines_list:'
+    for index in range(128):
+        print '    .word row_routine_%02x'%(index<<1)
 
 if __name__=='__main__': main()

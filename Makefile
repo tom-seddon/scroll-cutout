@@ -17,6 +17,7 @@ build:
 	mkdir -p $(VOLUME)/0
 #	python font_conv.py -o $(TMP)/font.s65 anuvverbubbla_8x8.png
 	python make_routines.py > $(TMP)/routines.s65
+	python make_font.py > $(TMP)/font.s65
 	$(MAKE) assemble STEM=$(NAME)
 	echo '@.$(NAME) e00 e00' > $(DEST)/@.$(NAME).inf
 	ssd_create -o $(NAME).ssd $(DEST)/@.$(NAME) $(DEST)/$$.!BOOT

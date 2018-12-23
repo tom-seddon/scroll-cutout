@@ -31,6 +31,31 @@ mode2_right .function index
 mode2_value .function left,right
                 .endf mode2_left(left)|mode2_right(right)
 
+                ; http://6502.org/tutorials/65c02opcodes.html
+
+nop1 .macro
+                .byte $03       ; 1 cycle
+                .endm
+
+nops: .macro ncycles
+
+n:=\ncycles
+                .rept n/12
+                jsr cycles_wait_12
+n:=n-12
+                .next
+
+                .rept n/2
+                nop
+n:=n-2
+                .next
+
+                .if n%2==1
+                .nop1
+                .endif
+                
+                .endm
+                
 ; ; Palette values for ULA
 ; PAL_black	= (0 ^ 7)
 ; PAL_blue	= (4 ^ 7)
@@ -63,7 +88,6 @@ mode2_value .function left,right
 video_control_value=$f4                 ;mode 2
 access_shadow=4
 display_shadow=1
-
 
 video_control=$fe20   
 video_palette=$fe21
@@ -101,7 +125,8 @@ escape_pressed: .fill 1         ; set when Escape key pressed
 ; FX variables
 
 fx_colour_index: .fill 1        ; index into our colour palette
-row_counter: .fill 1
+row_index: .fill 1
+checquerboard_index: .fill 1
 
                 .cerror *>=$9f,"ZP overflow"
 
@@ -295,10 +320,10 @@ call_update:
                 ; Wait for first scanline
 
 		lda #$40
+		sta $FE4D       ; clear timer1 flag ; 4c +1/2c
 -
 		bit $FE4D       ; 4c + 1/2c
 		beq -         	; poll timer1 flag
-		sta $FE4D       ; clear timer1 flag ; 4c +1/2c
 
                 ; Check if Escape pressed
 
@@ -309,7 +334,7 @@ call_update:
 
 call_draw:
                 jsr fx_draw_function
-
+                
                 ; Loop as fast as possible
 
                 jmp main_loop
@@ -334,17 +359,13 @@ call_kill:
 ; 	HELPER FUNCTIONS
 ;-------------------------------------------------------------------------
 
+                
 cycles_wait_128:		; JSR to get here takes 6c
                 .rept 58
                 nop
                 .next
+cycles_wait_12:
                 rts
-; {
-; 	FOR n,1,58,1		; 58x
-; 	NOP					; 2c
-; 	NEXT				; = 116c
-; 	RTS					; 6c
-; }						; = 128c
 
 main_end:
 
@@ -384,12 +405,12 @@ fx_init_function: .proc
                 lda #access_shadow
                 tsb acccon
 
-                lda #mode2_value(5,5)
 
                 stz dest+0
                 lda #$30
                 sta dest+1
 
+                lda #mode2_value(5,5)
 -
 dest=*+1
                 sta $ffff
@@ -431,6 +452,9 @@ load_pic:
 fx_update_function: .proc
                 ; Increment our index into the palette table
                 inc fx_colour_index
+                stz row_index
+                lda fx_colour_index
+                sta checquerboard_index
                 rts
                 .pend
 
@@ -452,26 +476,28 @@ fx_update_function: .proc
 
 fx_draw_function: .proc
 
-                ldx #0
-                ldy fx_colour_index
-
+                ldy #0          ;row index
+                
                 ; shift timing
-                .rept 38
-                nop
-                .next
+                .nops 93
 
 raster_loop:
-                lda video_control_values,y ;4 4
-                sta video_control ;4 8
+                ldx checquerboard_index    ;3 3
+                lda video_control_values,x ;4 7
+                sta video_control          ;4 11
+                dec checquerboard_index    ;5 16
 
-                .rept 56        ;112 120
-                nop
-                .next
-                .byte $03       ;1 121
+                ldx scanlines,y       ;4 20
+                lda #display_shadow   ;2 22
+                jmp (routines_list,x) ;6 28
+                ; 45 73
+char_done:
+                trb acccon      ;6 79
 
-                dey             ;2 123
-                inx             ;2 125
-                bne raster_loop ;3 128
+                .nops 128-84
+
+                iny             ;2 81
+                bne raster_loop ;3 84
 
                 rts                
 
@@ -479,7 +505,8 @@ raster_loop:
 
                 ;
 
-;                include ".tmp/routines.s65"
+                .include ".tmp/routines.s65"
+                .include ".tmp/font.s65"
                 
 ;-------------------------------------------------------------------------
 ; Kill FX
@@ -567,50 +594,10 @@ video_control_values:
                 .for i=0,i<256,i+=1
                 .byte video_control_value|((i>>4)&1)
                 .next
-                
-;                 .align $100
-; fx_colour1_table:
-;                 .rept 43
-;                 .byte MODE1_COL1 + PAL_red
-;                 .next
-;                 .rept 42
-;                 .byte MODE1_COL1 + PAL_magenta
-;                 .next
-;                 .rept 43
-;                 .byte MODE1_COL1 + PAL_blue
-;                 .next
-;                 .rept 43
-;                 .byte MODE1_COL1 + PAL_cyan
-;                 .next
-;                 .rept 43
-;                 .byte MODE1_COL1 + PAL_green
-;                 .next
-;                 .rept 42
-;                 .byte MODE1_COL1 + PAL_yellow
-;                 .next
 
-; fx_colour2_table:
-;                 .rept 21
-;                 .byte MODE1_COL3 + PAL_red
-;                 .next
-;                 .rept 42
-;                 .byte MODE1_COL3 + PAL_magenta
-;                 .next
-;                 .rept 43
-;                 .byte MODE1_COL3 + PAL_blue
-;                 .next
-;                 .rept 43
-;                 .byte MODE1_COL3 + PAL_cyan
-;                 .next
-;                 .rept 43
-;                 .byte MODE1_COL3 + PAL_green
-;                 .next
-;                 .rept 42
-;                 .byte MODE1_COL3 + PAL_yellow
-;                 .next
-;                 .rept 22
-;                 .byte MODE1_COL3 + PAL_red
-;                 .next
+                .align $100
+scanlines:
+                .fill 256,$54
 
 data_end:
 

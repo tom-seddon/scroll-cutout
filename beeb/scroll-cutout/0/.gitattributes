@@ -1,3 +1,4 @@
 * -text
 B.TEXT diff=bbcbasic
 $.MKPIC diff=bbcbasic
+$.MKCUTOUT diff=bbcbasic

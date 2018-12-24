@@ -85,6 +85,8 @@ n:=n-2
 ; 	GLOBAL constants
 ;-------------------------------------------------------------------------
 
+do_load_pic2=false
+                
 glyph_subrows=12
 video_control_value=$f4                 ;mode 2
 access_shadow=4
@@ -439,6 +441,13 @@ fx_init_function: .proc
                 lda #access_shadow
                 tsb acccon
 
+                .if do_load_pic2
+
+                ldx #<load_pic2
+                ldy #>load_pic2
+                jsr oscli
+
+                .else
 
                 stz dest+0
                 lda #$30
@@ -452,6 +461,8 @@ dest=*+1
                 bne -
                 inc dest+1
                 bpl -
+
+                .endif
 
                 lda #access_shadow
                 trb acccon
@@ -479,6 +490,10 @@ dest=*+1
 
 load_pic:
                 .text "LOAD PIC",13
+
+load_pic2:
+                .text "LOAD PIC2",13
+                
                 .pend
 
 ;-------------------------------------------------------------------------

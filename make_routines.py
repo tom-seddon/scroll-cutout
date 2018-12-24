@@ -29,8 +29,8 @@ def main():
 
     #
 
-    min_delay=103
-    max_delay=min_delay+45
+    min_delay=92
+    max_delay=min_delay+46
     
     print 'delays_list:'
     for index in range(128):

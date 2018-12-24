@@ -133,6 +133,8 @@ scrolltext_ptr: .fill 2
 glyph_row: .fill 1
 glyph_subrow_counter: .fill 1
 glyph_ptr: .fill 2
+scanlines_0_index: .fill 1
+scanlines_index: .fill 1
 
                 .cerror *>=$9f,"ZP overflow"
 
@@ -471,6 +473,7 @@ dest=*+1
 
                 stz fx_colour_index
                 stz delay_index
+                stz scanlines_0_index
 
                 rts
 
@@ -506,18 +509,19 @@ fx_update_function: .proc
                 sta checquerboard_index
 
                 jsr scroll
-                ; jsr scroll
+                jsr scroll
+                jsr scroll
+                jsr scroll
+                jsr scroll
+
+                lda scanlines_0_index
+                sta scanlines_index
+                
                 rts
                 .pend
 
 scroll: .proc
-                ; scroll display up one line
-                ldx #1
--
-                lda scanlines,x
-                sta scanlines-1,x
-                inx
-                bne -
+                inc scanlines_0_index
 
 read_scrolltext:
                 lda (scrolltext_ptr)
@@ -545,7 +549,10 @@ read_scrolltext:
                 ; means you get junk, not a crash, when something goes
                 ; wrong.
                 and #$fe
-                sta scanlines+255
+                
+                ldx scanlines_0_index
+                dex
+                sta scanlines,x
 
                 dec glyph_subrow_counter
                 bne scrolled
@@ -598,9 +605,8 @@ scrolled:
 ;-------------------------------------------------------------------------
 
                 .align 256
-fx_draw_function: .proc
 
-                ; 112=left, 156=right
+fx_draw_function: .proc
 
                 ldx delay_index
                 jmp (delays_list,x)
@@ -614,22 +620,58 @@ raster_loop:
                 sta video_control          ;4 11
                 dec checquerboard_index    ;5 16
 
-                ldx scanlines,y       ;4 20
-                lda #display_shadow   ;2 22
-                jmp (row_routines_list,x) ;6 28
-                ; 45 73
+                ldx scanlines_index       ;3 19
+                inc scanlines_index       ;5 24
+                lda scanlines,x           ;4 28
+                tax                       ;2 30
+                lda #display_shadow       ;2 32
+                jmp (row_routines_list,x) ;6 38
+                ; 45 83
 char_done:
-                trb acccon      ;6 79
+                trb acccon      ;6 89
 
-                .nops 128-84
+                .nops 128-94
 
-                iny             ;2 81
+                iny             ;2 91
                 .cerror (*&$ff00)!=(raster_loop&$ff00),"page crossing :("
-                bne raster_loop ;3 84
+                bne raster_loop ;3 94
 
                 rts                
 
                 .pend
+
+; fx_draw_function: .proc
+
+;                 ; 112=left, 156=right
+
+;                 ldx delay_index
+;                 jmp (delays_list,x)
+; after_delay:
+
+;                 ldy #0          ;row index
+
+; raster_loop:
+;                 ldx checquerboard_index    ;3 3
+;                 lda video_control_values,x ;4 7
+;                 sta video_control          ;4 11
+;                 dec checquerboard_index    ;5 16
+
+;                 ldx scanlines,y           ;4 20
+;                 lda #display_shadow       ;2 22
+;                 jmp (row_routines_list,x) ;6 28
+;                 ; 45 73
+; char_done:
+;                 trb acccon      ;6 79
+
+;                 .nops 128-84
+
+;                 iny             ;2 81
+;                 .cerror (*&$ff00)!=(raster_loop&$ff00),"page crossing :("
+;                 bne raster_loop ;3 84
+
+;                 rts                
+
+;                 .pend
 
                 ;
 

@@ -126,6 +126,7 @@ escape_pressed: .fill 1         ; set when Escape key pressed
 ; FX variables
 
 fx_colour_index: .fill 1        ; index into our colour palette
+delay_index: .fill 1
 row_index: .fill 1
 checquerboard_index: .fill 1
 scrolltext_ptr: .fill 2
@@ -391,7 +392,7 @@ dejitter_routines:
 ;-------------------------------------------------------------------------
 
                 
-cycles_wait_128:		; JSR to get here takes 6c
+cycles_wait_128:	;	JSR to get here takes 6c
                 .rept 58
                 nop
                 .next
@@ -468,6 +469,9 @@ dest=*+1
                 lda #>scrolltext
                 sta scrolltext_ptr+1
 
+                stz fx_colour_index
+                stz delay_index
+
                 rts
 
 load_pic:
@@ -493,17 +497,27 @@ fx_update_function: .proc
                 ; Increment our index into the palette table
                 inc fx_colour_index
                 inc fx_colour_index
+
+                inc delay_index
+                inc delay_index
+                
                 stz row_index
                 lda fx_colour_index
                 sta checquerboard_index
 
-                ; scroll display up
+                jsr scroll
+                ; jsr scroll
+                rts
+                .pend
+
+scroll: .proc
+                ; scroll display up one line
                 ldx #1
-scroll:
+-
                 lda scanlines,x
                 sta scanlines-1,x
                 inx
-                bne scroll
+                bne -
 
 read_scrolltext:
                 lda (scrolltext_ptr)
@@ -553,13 +567,13 @@ next_scrolltext_char:
 +
 
                 lda (scrolltext_ptr)
-                bne scrolltext_ptr_ok
-
+                bne +
                 lda #<scrolltext
                 sta scrolltext_ptr
                 lda #>scrolltext
                 sta scrolltext_ptr+1
-scrolltext_ptr_ok:
++
+                
 glyph_row_ok:
                 sty glyph_row
 scrolled:
@@ -583,12 +597,16 @@ scrolled:
 ; A FULL AND VALID 312 line PAL signal before exiting!
 ;-------------------------------------------------------------------------
 
+                .align 256
 fx_draw_function: .proc
 
+                ; 112=left, 156=right
+
+                ldx delay_index
+                jmp (delays_list,x)
+after_delay:
+
                 ldy #0          ;row index
-                
-                ; shift timing
-                ; .nops 
 
 raster_loop:
                 ldx checquerboard_index    ;3 3
@@ -598,7 +616,7 @@ raster_loop:
 
                 ldx scanlines,y       ;4 20
                 lda #display_shadow   ;2 22
-                jmp (routines_list,x) ;6 28
+                jmp (row_routines_list,x) ;6 28
                 ; 45 73
 char_done:
                 trb acccon      ;6 79
@@ -606,6 +624,7 @@ char_done:
                 .nops 128-84
 
                 iny             ;2 81
+                .cerror (*&$ff00)!=(raster_loop&$ff00),"page crossing :("
                 bne raster_loop ;3 84
 
                 rts                

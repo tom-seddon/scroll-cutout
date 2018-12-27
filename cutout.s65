@@ -85,7 +85,7 @@ n:=n-2
 ; 	GLOBAL constants
 ;-------------------------------------------------------------------------
 
-do_load_pic2=false
+do_load_pic2=true
                 
 glyph_subrows=12
 video_control_value=$f4                 ;mode 2
@@ -137,6 +137,7 @@ glyph_subrow_counter: .fill 1
 glyph_ptr: .fill 2
 scanlines_0_index: .fill 1
 scanlines_index: .fill 1
+screen_addr_index: .fill 1
 
                 .cerror *>=$9f,"ZP overflow"
 
@@ -485,6 +486,7 @@ dest=*+1
                 stz fx_colour_index
                 stz delay_index
                 stz scanlines_0_index
+                stz screen_addr_index
 
                 rts
 
@@ -492,7 +494,7 @@ load_pic:
                 .text "LOAD PIC",13
 
 load_pic2:
-                .text "LOAD PIC2",13
+                .text "LOAD PIC3",13
                 
                 .pend
 
@@ -531,8 +533,51 @@ fx_update_function: .proc
 
                 lda scanlines_0_index
                 sta scanlines_index
-                
+
+                inc screen_addr_index
+
+                ldx screen_addr_index
+
+                lda #12
+                sta $fe00
+                lda screen_addrs_h,x
+                sta $fe01
+
+                lda #13
+                sta $fe00
+                lda screen_addrs_l,x
+                sta $fe01
+
+                and #7
+                ora #8
+                asl a
+                asl a
+                asl a
+                asl a
+
+                ora #11^7
+                jsr set4
+
+                eor #7
+                jsr set4
+
                 rts
+
+set4: .proc
+                ldx #3
+loop:
+                sta video_palette
+
+                clc
+                adc #$10
+                bcc +
+                ora #$80
++
+                dex
+                bpl loop
+                rts
+                .pend     
+                
                 .pend
 
 scroll: .proc

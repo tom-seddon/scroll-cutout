@@ -46,5 +46,29 @@ def main():
     print 'draw_delay_%d:'%min_delay
     print '    .nops %d'%(min_delay-3)
     print '    jmp fx_draw_function.after_delay'
+        
+    #
+    screen_addrs=[]
+    for index in range(256):
+        angle=index/255.0*16*math.pi
+        dx=math.sin(angle)*0.5
+        dy=math.cos(angle)*0.5
+
+        # not quite centred!
+        if dx<0: x=dx*28
+        else: x=dx*34
+
+        if dy<0: y=dy*14
+        else: y=dy*8
+
+        addr=0x3000+int(x)*8+int(y)*640
+        if addr<0x3000: addr+=0x5000
+        screen_addrs.append(addr>>3)
+
+    print 'screen_addrs_l:'
+    for a in screen_addrs: print '    .byte <$%04x'%a
+    print 'screen_addrs_h:'
+    for a in screen_addrs: print '    .byte >$%04x'%a
+        
 
 if __name__=='__main__': main()

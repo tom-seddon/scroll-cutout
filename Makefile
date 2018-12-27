@@ -21,7 +21,8 @@ build:
 	python make_font.py > $(TMP)/font.s65
 	$(MAKE) assemble STEM=$(NAME)
 	echo '@.$(NAME) e00 e00' > $(DEST)/@.$(NAME).inf
-	ssd_create -4 3 -o $(NAME).ssd '$(DEST)/@.$(NAME)' '$(DEST)/$$.!BOOT' '$(DEST)/$$.PIC'
+	ssd_create -4 3 -o $(NAME).ssd '$(DEST)/@.$(NAME)' '$(DEST)/$$.!BOOT' '$(DEST)/$$.PIC' '$(DEST)/$$.PIC2' '$(DEST)/$$.PIC3'
+	$(MAKE) test_b2
 
 ##########################################################################
 ##########################################################################

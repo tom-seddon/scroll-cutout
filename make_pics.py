@@ -93,7 +93,7 @@ def main(options):
     striped=data[:]
     for y in range(256):
         for x in range(160):
-            if not smiley[y][x]: putpixel(striped,x,y,11 if (x&15)<8 else 12)
+            if not smiley[y][x]: putpixel(striped,x,y,8+((x&15)>>1))
     save_pic(options.striped,striped)
 
     masked=data[:]

@@ -16,6 +16,7 @@ NAME:=cutout
 build:
 	mkdir -p $(VOLUME)/0
 #	python font_conv.py -o $(TMP)/font.s65 anuvverbubbla_8x8.png
+	python make_pics.py --striped '$(DEST)/$$.PIC' --masked '$(DEST)/$$.PIC2' --dithered '$(DEST)/$$.PIC3' '$(VOLUME)/1/2.SMILEY'
 	python make_routines.py > $(TMP)/routines.s65
 	python make_font.py > $(TMP)/font.s65
 	$(MAKE) assemble STEM=$(NAME)
@@ -33,3 +34,8 @@ assemble:
 
 ##########################################################################
 ##########################################################################
+
+.PHONY:test_b2
+test_b2:
+	curl -G 'http://localhost:48075/reset/b2' --data-urlencode "config=Master 128 (MOS 3.20)"
+	curl -H 'Content-Type:application/binary' --upload-file '$(NAME).ssd' 'http://localhost:48075/run/b2?name=$(NAME).ssd'

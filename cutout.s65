@@ -426,11 +426,12 @@ fx_start:
 
 fx_init_function: .proc
 
-                lda #mode2_palette(11,0)
+                clc
+                lda #mode2_palette(8,0)
+-
                 sta video_palette
-
-                lda #mode2_palette(12,0)
-                sta video_palette
+                adc #$10
+                bcc -
 
                 lda #access_shadow
                 trb acccon
@@ -468,11 +469,11 @@ dest=*+1
                 lda #access_shadow
                 trb acccon
 
-                lda #mode2_palette(11,11)
-                sta video_palette
+                ; lda #mode2_palette(11,11)
+                ; sta video_palette
 
-                lda #mode2_palette(12,12)
-                sta video_palette
+                ; lda #mode2_palette(12,12)
+                ; sta video_palette
 
                 lda #glyph_subrows
                 sta glyph_subrow_counter
